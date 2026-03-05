@@ -19,11 +19,13 @@ import authRoutes from './routes/auth';
 import jobsRoutes from './routes/jobs';
 import applicationsRoutes from './routes/applications';
 import aiRoutes from './routes/ai';
+import scraperRoutes from './routes/scraper';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/jobs', jobsRoutes);
 app.use('/api/applications', applicationsRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/scraper', scraperRoutes);
 
 // Basic Routes
 app.get('/', (req: Request, res: Response) => {
