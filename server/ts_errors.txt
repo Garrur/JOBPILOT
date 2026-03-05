@@ -1,0 +1,10 @@
+src/controllers/applicationController.ts(72,16): error TS2322: Type 'string | string[]' is not assignable to type 'string | (ApplicationUserIdJobIdCompoundUniqueInput & string) | undefined'.
+  Type 'string[]' is not assignable to type 'string | (ApplicationUserIdJobIdCompoundUniqueInput & string) | undefined'.
+    Type 'string[]' is not assignable to type 'ApplicationUserIdJobIdCompoundUniqueInput & string'.
+      Type 'string[]' is missing the following properties from type 'ApplicationUserIdJobIdCompoundUniqueInput': userId, jobId
+src/controllers/applicationController.ts(80,16): error TS2322: Type 'string | string[]' is not assignable to type 'string | (ApplicationUserIdJobIdCompoundUniqueInput & string) | undefined'.
+  Type 'string[]' is not assignable to type 'string | (ApplicationUserIdJobIdCompoundUniqueInput & string) | undefined'.
+    Type 'string[]' is not assignable to type 'ApplicationUserIdJobIdCompoundUniqueInput & string'.
+      Type 'string[]' is missing the following properties from type 'ApplicationUserIdJobIdCompoundUniqueInput': userId, jobId
+src/controllers/jobController.ts(38,56): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
