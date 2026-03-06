@@ -32,6 +32,10 @@ app.get('/', (req: Request, res: Response) => {
   res.json({ message: 'Welcome to the JobPilot API' });
 });
 
+app.get('/api', (req: Request, res: Response) => {
+  res.json({ message: 'Welcome to the JobPilot API' });
+});
+
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', message: 'JobPilot API is running' });
 });
