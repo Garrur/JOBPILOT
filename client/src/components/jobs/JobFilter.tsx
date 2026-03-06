@@ -4,6 +4,7 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Checkbox } from '../ui/checkbox';
 import { Slider } from '../ui/slider';
+import { useFilterStore } from '../../store/filterStore';
 
 // Dummy platform data matching the spec
 const platforms = [
@@ -16,11 +17,31 @@ const platforms = [
 ];
 
 export default function JobFilters() {
+  const { 
+    platforms: selectedPlatforms, 
+    jobTypes: selectedJobTypes, 
+    location, 
+    minMatchScore,
+    experience,
+    togglePlatform,
+    toggleJobType,
+    setLocation,
+    setMinMatchScore,
+    setExperience,
+    resetFilters
+  } = useFilterStore();
+
   return (
     <div className="space-y-6">
       <Card className="dark:bg-slate-800 dark:border-slate-700">
-        <CardHeader className="pb-3 border-b dark:border-slate-700">
+        <CardHeader className="pb-3 border-b dark:border-slate-700 flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Filter Jobs</CardTitle>
+          <button 
+            onClick={resetFilters}
+            className="text-xs text-brand-600 dark:text-brand-400 hover:underline"
+          >
+            Clear All
+          </button>
         </CardHeader>
         <CardContent className="p-4 space-y-6">
           
@@ -30,7 +51,11 @@ export default function JobFilters() {
             <div className="space-y-2">
               {platforms.map((platform) => (
                 <div key={platform.id} className="flex items-center space-x-2">
-                  <Checkbox id={platform.id} defaultChecked />
+                  <Checkbox 
+                    id={platform.id} 
+                    checked={selectedPlatforms.includes(platform.id)}
+                    onCheckedChange={() => togglePlatform(platform.id)}
+                  />
                   <Label 
                     htmlFor={platform.id} 
                     className="text-sm font-normal flex items-center gap-2 cursor-pointer"
@@ -49,7 +74,11 @@ export default function JobFilters() {
             <div className="space-y-2">
               {['Full-time', 'Part-time', 'Internship', 'Freelance'].map((type) => (
                 <div key={type} className="flex items-center space-x-2">
-                  <Checkbox id={`type-${type}`} />
+                  <Checkbox 
+                    id={`type-${type}`} 
+                    checked={selectedJobTypes.includes(type)}
+                    onCheckedChange={() => toggleJobType(type)}
+                  />
                   <Label htmlFor={`type-${type}`} className="text-sm font-normal cursor-pointer">{type}</Label>
                 </div>
               ))}
@@ -59,7 +88,7 @@ export default function JobFilters() {
           {/* Experience */}
           <div className="space-y-3">
             <h4 className="font-medium text-sm text-gray-900 dark:text-gray-100">Experience</h4>
-            <Select>
+            <Select value={experience} onValueChange={setExperience}>
               <SelectTrigger className="w-full dark:bg-slate-900">
                 <SelectValue placeholder="Any Experience" />
               </SelectTrigger>
@@ -76,9 +105,24 @@ export default function JobFilters() {
           {/* Location */}
           <div className="space-y-3">
             <h4 className="font-medium text-sm text-gray-900 dark:text-gray-100">Location</h4>
-            <Input placeholder="e.g. Bangalore, Remote" className="dark:bg-slate-900" />
+            <Input 
+              placeholder="e.g. Bangalore, Remote" 
+              className="dark:bg-slate-900" 
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
             <div className="flex items-center space-x-2 mt-2">
-              <Checkbox id="remote-only" />
+              <Checkbox 
+                id="remote-only" 
+                checked={location.toLowerCase().includes('remote')}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setLocation('Remote');
+                  } else if (location.toLowerCase() === 'remote') {
+                    setLocation('');
+                  }
+                }}
+              />
               <Label htmlFor="remote-only" className="text-sm font-normal cursor-pointer">Remote Only</Label>
             </div>
           </div>
@@ -87,9 +131,15 @@ export default function JobFilters() {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h4 className="font-medium text-sm text-gray-900 dark:text-gray-100">Match Score</h4>
-              <span className="text-xs text-orange-500 font-medium">{'>'} 80%</span>
+              <span className="text-xs text-orange-500 font-medium">{'>'} {minMatchScore}%</span>
             </div>
-            <Slider defaultValue={[80]} max={100} step={1} className="w-full" />
+            <Slider 
+              value={[minMatchScore]} 
+              onValueChange={(val) => setMinMatchScore(val[0])}
+              max={100} 
+              step={1} 
+              className="w-full" 
+            />
           </div>
 
         </CardContent>

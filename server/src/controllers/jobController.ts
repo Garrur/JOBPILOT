@@ -5,23 +5,59 @@ const prisma = new PrismaClient();
 
 export const getJobs = async (req: Request, res: Response) => {
   try {
-    const { platform, type, location, search } = req.query;
+    const { platform, type, location, search, experience } = req.query;
 
     const query: any = {
-      where: {},
+      where: {
+        AND: []
+      },
       orderBy: { scrapedAt: 'desc' }
     };
 
-    if (platform) query.where.platform = { in: (platform as string).split(',') };
-    if (type) query.where.jobType = { in: (type as string).split(',') };
+    if (platform) {
+      const platformsArr = (platform as string).split(',');
+      query.where.AND.push({
+         OR: platformsArr.map(p => ({
+           platform: { equals: p, mode: 'insensitive' }
+         }))
+      });
+    }
+    
+    if (type) {
+      const typesArr = (type as string).split(',');
+      query.where.AND.push({
+         OR: typesArr.map(t => ({
+           jobType: { contains: t, mode: 'insensitive' }
+         }))
+      });
+    }
+    
     if (location) query.where.location = { contains: location as string, mode: 'insensitive' };
     
+    // Fallback logic for experience: Since external websites don't reliably give us an "Experience Level" field, 
+    // we use a naive full-text search against the job description to estimate filtering.
+    if (experience && experience !== 'any') {
+      const expString = experience as string;
+      // Query against the dedicated experienceLevel field (populated by scrapers)
+      // Use 'contains' to match 'fresher', '1-3', '3-5', '5+' etc.
+      query.where.AND.push({
+        experienceLevel: { equals: expString, mode: 'insensitive' }
+      });
+    }
+    
     if (search) {
-      query.where.OR = [
-        { title: { contains: search as string, mode: 'insensitive' } },
-        { company: { contains: search as string, mode: 'insensitive' } },
-        { description: { contains: search as string, mode: 'insensitive' } },
-      ];
+      query.where.AND.push({
+         OR: [
+           { title: { contains: search as string, mode: 'insensitive' } },
+           { company: { contains: search as string, mode: 'insensitive' } },
+           { description: { contains: search as string, mode: 'insensitive' } },
+         ]
+      });
+    }
+
+    // Prisma throws an error if AND is present but empty
+    if (query.where.AND.length === 0) {
+       delete query.where.AND;
     }
 
     const jobs = await prisma.job.findMany(query);
