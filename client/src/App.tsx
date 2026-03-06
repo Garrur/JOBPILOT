@@ -3,6 +3,7 @@ import Layout from './components/layout/Layout';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 // Pages
+import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -17,20 +18,20 @@ function App() {
   return (
     <Router>
       <Routes>
+        {/* Public pages — no layout shell */}
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        
-        <Route element={<Layout />}>
-          {/* Public or shared routes */}
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/jobs" element={<Jobs />} />
-          <Route path="/jobs/:id" element={<JobDetail />} />
-          
-          {/* Protected routes */}
-          <Route element={<ProtectedRoute />}>
-             <Route path="/onboarding" element={<Onboarding />} />
-             <Route path="/tracker" element={<Tracker />} />
-             <Route path="/profile" element={<Profile />} />
+
+        {/* All app pages require login */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<Layout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/jobs" element={<Jobs />} />
+            <Route path="/jobs/:id" element={<JobDetail />} />
+            <Route path="/tracker" element={<Tracker />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/onboarding" element={<Onboarding />} />
           </Route>
         </Route>
       </Routes>

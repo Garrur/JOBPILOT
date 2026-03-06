@@ -14,7 +14,7 @@ export default function Layout() {
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center space-x-2">
               <Briefcase className="h-8 w-8 text-orange-500" />
-              <Link to="/" className="text-xl font-bold dark:text-white">JobPilot</Link>
+              <Link to="/dashboard" className="text-xl font-bold dark:text-white">JobPilot</Link>
             </div>
             <div className="flex items-center space-x-4">
               <button
@@ -26,6 +26,7 @@ export default function Layout() {
               
               {user ? (
                 <>
+                  <Link to="/dashboard" className="text-gray-600 dark:text-gray-300 hover:text-orange-500">Dashboard</Link>
                   <Link to="/jobs" className="text-gray-600 dark:text-gray-300 hover:text-orange-500">Jobs</Link>
                   <Link to="/tracker" className="text-gray-600 dark:text-gray-300 hover:text-orange-500">Tracker</Link>
                   <div className="relative group">
