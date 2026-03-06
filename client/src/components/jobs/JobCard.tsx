@@ -1,8 +1,12 @@
+import { useState } from 'react';
 import { Badge } from '../ui/badge';
 import { Card, CardContent, CardFooter } from '../ui/card';
 import { Button } from '../ui/button';
-import { MapPin, Briefcase, IndianRupee, Clock, ArrowRight } from 'lucide-react';
+import { MapPin, Briefcase, IndianRupee, Clock, CheckCircle, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
+import { useAuthStore } from '../../store/authStore';
+import api from '../../lib/api';
 
 export interface JobProps {
   id: string;
@@ -16,21 +20,53 @@ export interface JobProps {
   postedAt?: string;
   scrapedAt?: string;
   companyLogo?: string;
+  applyUrl?: string;
 }
 
 const getPlatformColor = (platform: string) => {
   switch (platform.toLowerCase()) {
-    case 'linkedin': return 'bg-[#0A66C2] text-white hover:bg-[#0A66C2]/90';
-    case 'naukri': return 'bg-[#9333EA] text-white hover:bg-[#9333EA]/90';
+    case 'linkedin':    return 'bg-[#0A66C2] text-white hover:bg-[#0A66C2]/90';
+    case 'naukri':      return 'bg-[#9333EA] text-white hover:bg-[#9333EA]/90';
     case 'internshala': return 'bg-[#16A34A] text-white hover:bg-[#16A34A]/90';
-    case 'wellfound': return 'bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black';
-    case 'shine': return 'bg-[#EA580C] text-white hover:bg-[#EA580C]/90';
-    case 'indeed': return 'bg-[#003A9B] text-white hover:bg-[#003A9B]/90';
-    default: return 'bg-gray-500 text-white';
+    case 'wellfound':   return 'bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black';
+    case 'shine':       return 'bg-[#EA580C] text-white hover:bg-[#EA580C]/90';
+    case 'indeed':      return 'bg-[#003A9B] text-white hover:bg-[#003A9B]/90';
+    default:            return 'bg-gray-500 text-white';
   }
 };
 
-export default function JobCard({ job }: { job: JobProps }) {
+export default function JobCard({ job, alreadyApplied = false }: { job: JobProps; alreadyApplied?: boolean }) {
+  const [applied, setApplied] = useState(alreadyApplied);
+  const [applying, setApplying] = useState(false);
+  const { isAuthenticated } = useAuthStore();
+
+  const handleApply = async (e: React.MouseEvent) => {
+    e.preventDefault(); // don't navigate
+    if (applied || applying) return;
+
+    setApplying(true);
+    try {
+      // 1. Track the application in DB
+      await api.post('/applications', { jobId: job.id });
+      setApplied(true);
+      toast.success('Application tracked! 🎉', {
+        description: `${job.title} at ${job.company} added to your tracker.`
+      });
+    } catch (err: any) {
+      const msg = err.response?.data?.error || 'Failed to track application';
+      if (msg.includes('Already applied')) {
+        setApplied(true);
+        toast.info('Already tracked in your applications');
+      } else {
+        toast.error(msg);
+      }
+    } finally {
+      setApplying(false);
+      // 2. Open external job URL in new tab regardless
+      if (job.applyUrl) window.open(job.applyUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   return (
     <Card className="hover:shadow-md transition-shadow dark:bg-slate-800 dark:border-slate-700 h-full flex flex-col">
       <CardContent className="p-6 flex-grow">
@@ -70,7 +106,9 @@ export default function JobCard({ job }: { job: JobProps }) {
           </div>
           <div className="flex items-center space-x-1.5">
             <Clock className="w-4 h-4 text-gray-400" />
-            <span className="line-clamp-1">{job.postedAt || new Date(job.scrapedAt || Date.now()).toLocaleDateString()}</span>
+            <span className="line-clamp-1">
+              {job.postedAt || new Date(job.scrapedAt || Date.now()).toLocaleDateString()}
+            </span>
           </div>
         </div>
 
@@ -78,16 +116,16 @@ export default function JobCard({ job }: { job: JobProps }) {
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">AI Match Score</span>
             <span className={`text-sm font-bold ${
-              (job.matchScore || 0) >= 80 ? 'text-green-500' : 
+              (job.matchScore || 0) >= 80 ? 'text-green-500' :
               (job.matchScore || 0) >= 60 ? 'text-orange-500' : 'text-gray-400'
             }`}>
               {job.matchScore ? `${job.matchScore}%` : 'Pending'}
             </span>
           </div>
           <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-1.5">
-            <div 
+            <div
               className={`h-1.5 rounded-full ${
-                (job.matchScore || 0) >= 80 ? 'bg-green-500' : 
+                (job.matchScore || 0) >= 80 ? 'bg-green-500' :
                 (job.matchScore || 0) >= 60 ? 'bg-orange-500' : 'bg-gray-400'
               }`}
               style={{ width: `${job.matchScore || 0}%` }}
@@ -95,12 +133,37 @@ export default function JobCard({ job }: { job: JobProps }) {
           </div>
         </div>
       </CardContent>
+
       <CardFooter className="p-4 bg-gray-50 dark:bg-slate-800/50 border-t dark:border-slate-700 flex justify-between gap-2">
-        <Button variant="outline" className="w-1/2 dark:border-slate-600 dark:hover:bg-slate-700">Save</Button>
-        <Button asChild className="w-1/2 bg-orange-500 hover:bg-orange-600 text-white">
-          <Link to={`/jobs/${job.id}`}>
-            View <ArrowRight className="ml-1 w-4 h-4" />
-          </Link>
+        {/* View detail */}
+        <Button asChild variant="outline" className="w-1/2 dark:border-slate-600 dark:hover:bg-slate-700">
+          <Link to={`/jobs/${job.id}`}>View</Link>
+        </Button>
+
+        {/* Apply + Track */}
+        <Button
+          className={`w-1/2 text-white transition-all ${
+            applied
+              ? 'bg-green-500 hover:bg-green-600 cursor-default'
+              : 'bg-orange-500 hover:bg-orange-600'
+          }`}
+          onClick={isAuthenticated ? handleApply : undefined}
+          disabled={applying}
+          asChild={!isAuthenticated}
+        >
+          {isAuthenticated ? (
+            <span className="flex items-center justify-center gap-1.5">
+              {applied ? (
+                <><CheckCircle className="w-4 h-4" /> Applied</>
+              ) : applying ? (
+                'Tracking...'
+              ) : (
+                <><ExternalLink className="w-4 h-4" /> Apply</>
+              )}
+            </span>
+          ) : (
+            <Link to="/login">Apply</Link>
+          )}
         </Button>
       </CardFooter>
     </Card>

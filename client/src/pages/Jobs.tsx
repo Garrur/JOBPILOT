@@ -24,10 +24,26 @@ export default function Jobs() {
   } = useFilterStore();
   const [showFiltersMobile, setShowFiltersMobile] = useState(false);
   const [jobs, setJobs] = useState<JobProps[]>([]);
+  const [appliedMap, setAppliedMap] = useState<Record<string, number | null>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateStatus, setUpdateStatus] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('newest');
+
+  const fetchApplications = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const res = await axios.get('http://localhost:5000/api/applications', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const map: Record<string, number | null> = {};
+      (res.data || []).forEach((app: any) => {
+        map[app.jobId] = app.matchScore ?? null;
+      });
+      setAppliedMap(map);
+    } catch {}
+  };
 
   const fetchJobs = async () => {
     const {
@@ -60,6 +76,7 @@ export default function Jobs() {
 
   useEffect(() => {
     fetchJobs();
+    fetchApplications();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [platforms, jobTypes, location, minMatchScore, experience]);
 
@@ -238,7 +255,11 @@ export default function Jobs() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
             {sortedJobs.map((job) => (
-              <JobCard key={job.id} job={job} />
+              <JobCard
+                key={job.id}
+                job={{ ...job, matchScore: appliedMap[job.id] ?? job.matchScore }}
+                alreadyApplied={job.id in appliedMap}
+              />
             ))}
           </div>
         )}

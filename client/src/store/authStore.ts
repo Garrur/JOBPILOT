@@ -5,6 +5,8 @@ interface User {
   email: string;
   name: string;
   skills: string[];
+  resumeUrl?: string;
+  resumeText?: string;
 }
 
 interface AuthState {
@@ -13,6 +15,7 @@ interface AuthState {
   isAuthenticated: boolean;
   login: (user: User, token: string) => void;
   logout: () => void;
+  updateUser: (data: Partial<User>) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -27,4 +30,5 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.removeItem('token');
     set({ user: null, token: null, isAuthenticated: false });
   },
+  updateUser: (data) => set((state) => ({ user: state.user ? { ...state.user, ...data } : null })),
 }));

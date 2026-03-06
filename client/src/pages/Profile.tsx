@@ -14,8 +14,13 @@ export default function Profile() {
   const { user } = useAuthStore();
   const initials = user?.name?.split(' ').map(n => n[0]).join('') || 'U';
   
-  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  // Initialize state from authStore. user.resumeUrl means a resume was uploaded
+  const [resumeFile, setResumeFile] = useState<File | null>(
+    user?.resumeUrl ? new File([], user.resumeUrl.split('/').pop() || 'Resume.pdf') : null
+  );
   const [isUploading, setIsUploading] = useState(false);
+  const [extractedSkills, setExtractedSkills] = useState<string[]>(user?.skills || []);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -23,24 +28,53 @@ export default function Profile() {
     if (!file) return;
 
     if (file.type !== 'application/pdf') {
-       toast.error('Only PDF files are supported for AI Analysis');
-       return;
+      toast.error('Only PDF files are supported for AI Analysis');
+      return;
     }
 
     setIsUploading(true);
-    // Simulate API upload delay
-    setTimeout(() => {
-       setResumeFile(file);
-       setIsUploading(false);
-       toast.success('Resume uploaded successfully. AI Analysis updated.');
-    }, 1500);
+    setUploadProgress(10);
+
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('resume', file);
+
+      setUploadProgress(40);
+      const response = await fetch('http://localhost:5000/api/auth/resume', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      setUploadProgress(80);
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Upload failed');
+      }
+
+      const data = await response.json();
+      setUploadProgress(100);
+      setResumeFile(file);
+      setExtractedSkills(data.skills || []);
+      useAuthStore.getState().updateUser({ resumeUrl: data.resumeUrl, skills: data.skills || [] });
+      toast.success(`Resume uploaded! AI extracted ${data.skills?.length || 0} skills.`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to upload resume');
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
   };
 
   const handleDeleteResume = () => {
     setResumeFile(null);
+    setExtractedSkills([]);
+    useAuthStore.getState().updateUser({ resumeUrl: '', skills: [] });
     if (fileInputRef.current) fileInputRef.current.value = '';
-    toast.info('Resume deleted');
+    toast.info('Resume removed');
   };
+
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-10">
@@ -176,7 +210,7 @@ export default function Profile() {
                      onClick={() => fileInputRef.current?.click()}
                      disabled={isUploading}
                    >
-                     {isUploading ? 'Uploading...' : 'Upload New'}
+                     {isUploading ? 'Parsing with AI...' : 'Upload PDF'}
                    </Button>
                 </div>
               </CardTitle>
@@ -186,6 +220,17 @@ export default function Profile() {
             </CardHeader>
             <CardContent className="space-y-6">
               
+               {isUploading && (
+                 <div className="space-y-1">
+                   <div className="flex justify-between text-xs text-gray-500">
+                     <span>Uploading &amp; parsing with AI...</span>
+                     <span>{uploadProgress}%</span>
+                   </div>
+                   <div className="h-2 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                     <div className="h-full bg-orange-500 rounded-full transition-all duration-500" style={{ width: `${uploadProgress}%` }} />
+                   </div>
+                 </div>
+               )}
               {/* Current Resume Card */}
               {resumeFile ? (
                 <div className="p-4 border dark:border-slate-700 rounded-lg flex items-center justify-between bg-blue-50/50 dark:bg-slate-900/50">
@@ -213,6 +258,20 @@ export default function Profile() {
                       <h4 className="font-medium dark:text-white">No Resume Uploaded</h4>
                       <p className="text-xs text-gray-500">Upload a PDF to power AI features</p>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Extracted Skills from AI */}
+              {extractedSkills.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">AI Extracted Skills</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {extractedSkills.map(skill => (
+                      <span key={skill} className="px-2.5 py-1 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 rounded-md text-xs font-medium">
+                        {skill}
+                      </span>
+                    ))}
                   </div>
                 </div>
               )}
