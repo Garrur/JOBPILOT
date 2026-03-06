@@ -6,11 +6,41 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Separator } from '../components/ui/separator';
-import { MapPin, Mail, Phone, ExternalLink, Download, Sparkles } from 'lucide-react';
+import { MapPin, Mail, Phone, ExternalLink, Download, Sparkles, FileText, Upload } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { toast } from 'sonner';
 
 export default function Profile() {
   const { user } = useAuthStore();
   const initials = user?.name?.split(' ').map(n => n[0]).join('') || 'U';
+  
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+       toast.error('Only PDF files are supported for AI Analysis');
+       return;
+    }
+
+    setIsUploading(true);
+    // Simulate API upload delay
+    setTimeout(() => {
+       setResumeFile(file);
+       setIsUploading(false);
+       toast.success('Resume uploaded successfully. AI Analysis updated.');
+    }, 1500);
+  };
+
+  const handleDeleteResume = () => {
+    setResumeFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    toast.info('Resume deleted');
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-10">
@@ -133,34 +163,64 @@ export default function Profile() {
             <CardHeader>
               <CardTitle className="flex justify-between items-center">
                 <span>Resume Management</span>
-                <Button className="bg-orange-500 hover:bg-orange-600 text-white">Upload New</Button>
+                <div>
+                   <input 
+                     type="file" 
+                     className="hidden" 
+                     ref={fileInputRef} 
+                     accept="application/pdf"
+                     onChange={handleFileUpload}
+                   />
+                   <Button 
+                     className="bg-orange-500 hover:bg-orange-600 text-white"
+                     onClick={() => fileInputRef.current?.click()}
+                     disabled={isUploading}
+                   >
+                     {isUploading ? 'Uploading...' : 'Upload New'}
+                   </Button>
+                </div>
               </CardTitle>
               <CardDescription>
                 Manage your master resume. Our AI uses this to parse skills and generate custom cover letters.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              
               {/* Current Resume Card */}
-              <div className="p-4 border dark:border-slate-700 rounded-lg flex items-center justify-between bg-gray-50 dark:bg-slate-900/50">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-red-100 text-red-600 dark:bg-red-900/30 flex items-center justify-center rounded-lg">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              {resumeFile ? (
+                <div className="p-4 border dark:border-slate-700 rounded-lg flex items-center justify-between bg-blue-50/50 dark:bg-slate-900/50">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-blue-100 text-blue-600 dark:bg-blue-900/30 flex items-center justify-center rounded-lg">
+                      <FileText className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium dark:text-white">{resumeFile.name}</h4>
+                      <p className="text-xs text-gray-500">Just uploaded • {(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-medium dark:text-white">John_Doe_Software_Engineer.pdf</h4>
-                    <p className="text-xs text-gray-500">Updated 2 months ago • 2.4 MB</p>
+                  <div className="flex space-x-2">
+                    <Button variant="outline" size="sm" className="dark:border-slate-600 text-gray-500"><Download className="w-4 h-4" /></Button>
+                    <Button variant="outline" size="sm" className="dark:border-slate-600 text-red-500" onClick={handleDeleteResume}>Delete</Button>
                   </div>
                 </div>
-                <div className="flex space-x-2">
-                  <Button variant="outline" size="sm" className="dark:border-slate-600 text-gray-500"><Download className="w-4 h-4" /></Button>
-                  <Button variant="outline" size="sm" className="dark:border-slate-600 text-red-500">Delete</Button>
+              ) : (
+                <div className="p-4 border dark:border-slate-700 rounded-lg flex items-center justify-between bg-gray-50 dark:bg-slate-900/50">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-gray-100 text-gray-500 dark:bg-gray-800 flex items-center justify-center rounded-lg">
+                      <Upload className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium dark:text-white">No Resume Uploaded</h4>
+                      <p className="text-xs text-gray-500">Upload a PDF to power AI features</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <Separator className="dark:bg-slate-700" />
 
               {/* AI Features */}
-              <div>
+              <div className={!resumeFile ? 'opacity-50 pointer-events-none' : ''}>
                 <h3 className="flex items-center font-semibold text-lg mb-4 text-gray-900 dark:text-white">
                   <Sparkles className="w-5 h-5 text-orange-500 mr-2" />
                   AI Document Analysis
@@ -169,7 +229,7 @@ export default function Profile() {
                   <div className="p-4 border dark:border-slate-700 rounded-lg">
                     <h4 className="font-medium text-sm mb-2 dark:text-white">Extracted Skills Score</h4>
                     <div className="text-2xl font-bold text-green-500 mb-1">Excellent</div>
-                    <p className="text-xs text-gray-500">The AI successfully identified 24 technical and 5 soft skills from your document.</p>
+                    <p className="text-xs text-gray-500">The AI successfully identified technical and soft skills from your document.</p>
                   </div>
                   <div className="p-4 border dark:border-slate-700 rounded-lg">
                     <h4 className="font-medium text-sm mb-2 dark:text-white">ATS Formatting</h4>
@@ -178,7 +238,6 @@ export default function Profile() {
                   </div>
                 </div>
               </div>
-
             </CardContent>
           </Card>
         </TabsContent>

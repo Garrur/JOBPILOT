@@ -1,15 +1,58 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Building2, Clock } from 'lucide-react';
 import { kanbanData } from '../lib/kanbanData';
+import { useAuthStore } from '../store/authStore';
 
 export default function Tracker() {
   const [data, setData] = useState(kanbanData.items);
+  const [isLoading, setIsLoading] = useState(true);
+  const { token } = useAuthStore();
 
-  const onDragEnd = (result: DropResult) => {
+  useEffect(() => {
+    const fetchApps = async () => {
+      if (!token) return;
+      try {
+        setIsLoading(true);
+        const res = await axios.get('http://localhost:5000/api/applications', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        // Initialize an empty structure
+        const nextData: Record<string, any[]> = {
+          applied: [], viewed: [], shortlisted: [], interview: [], offer: [], rejected: []
+        };
+        
+        res.data.forEach((app: any) => {
+          let col = app.status?.toLowerCase() || 'applied';
+          if (!nextData[col]) col = 'applied'; // fallback
+          
+          nextData[col].push({
+            id: app.id,
+            title: app.job?.title || 'Unknown Position',
+            company: app.job?.company || 'Unknown',
+            date: new Date(app.appliedAt || new Date()).toLocaleDateString(),
+            score: app.matchScore || 'Pending',
+            platform: app.job?.platform || 'Direct'
+          });
+        });
+        
+        setData(nextData as any);
+      } catch (error) {
+        console.error("Failed to fetch applications", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchApps();
+  }, [token]);
+
+  const onDragEnd = async (result: DropResult) => {
     const { source, destination } = result;
 
     if (!destination) return;
@@ -24,12 +67,34 @@ export default function Tracker() {
     const [removed] = sourceItems.splice(source.index, 1);
     destItems.splice(destination.index, 0, removed);
 
+    // Optimistic UI update
     setData({
       ...data,
       [sourceCol]: sourceItems,
       [destCol]: destItems,
     });
+    
+    // API Call
+    if (sourceCol !== destCol) {
+       try {
+         await axios.patch(`http://localhost:5000/api/applications/${removed.id}/status`, {
+           status: destCol.toUpperCase()
+         }, {
+           headers: { Authorization: `Bearer ${token}` }
+         });
+       } catch (error) {
+         console.error("Failed to persist drag result", error);
+       }
+    }
   };
+
+  if (isLoading) {
+    return (
+       <div className="flex justify-center items-center h-full min-h-[50vh]">
+         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+       </div>
+    );
+  }
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col pt-2 pb-6 px-4">

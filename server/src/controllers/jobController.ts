@@ -9,11 +9,11 @@ export const getJobs = async (req: Request, res: Response) => {
 
     const query: any = {
       where: {},
-      orderBy: { createdAt: 'desc' }
+      orderBy: { scrapedAt: 'desc' }
     };
 
     if (platform) query.where.platform = { in: (platform as string).split(',') };
-    if (type) query.where.type = { in: (type as string).split(',') };
+    if (type) query.where.jobType = { in: (type as string).split(',') };
     if (location) query.where.location = { contains: location as string, mode: 'insensitive' };
     
     if (search) {

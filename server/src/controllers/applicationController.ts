@@ -5,13 +5,13 @@ const prisma = new PrismaClient();
 
 // Add this to your Express Request type in real app to avoid `any`
 // Extend Express Request to include user
-interface AuthRequest extends Request {
-  user?: any; // The decoded JWT token payload
+export interface AuthRequest extends Request {
+  userId?: string;
 }
 
 export const getApplications = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.userId;
 
     const applications = await prisma.application.findMany({
       where: { userId },
@@ -30,8 +30,12 @@ export const getApplications = async (req: AuthRequest, res: Response) => {
 
 export const createApplication = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.userId;
     const { jobId, coverLetter, resumeUrl } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
     // Check if already applied
     const existing = await prisma.application.findFirst({
@@ -64,7 +68,7 @@ export const createApplication = async (req: AuthRequest, res: Response) => {
 
 export const updateApplicationStatus = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.userId;
     const id = req.params.id as string;
     const { status } = req.body;
 

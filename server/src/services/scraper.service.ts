@@ -24,30 +24,38 @@ export const ScraperService = {
 
       // Scrape data
       const jobs = await page.evaluate((keyword) => {
-        const jobElements = document.querySelectorAll('.individual_internship');
+        const jobElements = document.querySelectorAll('.container-fluid.individual_internship');
         const scrapedData: any[] = [];
 
         jobElements.forEach((el) => {
           try {
-            const titleEl = el.querySelector('.heading_4_5.profile a');
-            const companyEl = el.querySelector('.company_name');
-            const locationEl = el.querySelector('.location_link');
-            const salaryEl = el.querySelector('.stipend');
-            
+            // New UI Selectors
+            const titleEl = el.querySelector('.job-internship-name');
+            const companyEl = el.querySelector('.company-name');
+            const locationsEl = el.querySelectorAll('.locations a');
+            // usually stipend/salary is the first or second item in job-meta
+            const salaryEl = el.querySelector('.stipend'); 
+
             // Extract text securely
-            const title = titleEl?.textContent?.trim() || 'Unknown Title';
+            const title = titleEl?.textContent?.trim();
             const company = companyEl?.textContent?.trim() || 'Unknown Company';
-            const location = locationEl?.textContent?.trim() || 'Unknown Location';
+            
+            // Map over locations since there can be multiple
+            let location = 'Unknown Location';
+            if (locationsEl && locationsEl.length > 0) {
+               location = Array.from(locationsEl).map(l => l.textContent?.trim()).join(', ');
+            }
+
             const salary = salaryEl?.textContent?.trim() || 'Not Disclosed';
             
             // Generate link
-            const path = titleEl?.getAttribute('href') || null;
+            const path = el.getAttribute('data-href') || titleEl?.parentElement?.getAttribute('href') || null;
             const applyUrl = path ? `https://internshala.com${path}` : null;
             
             // Internshala jobs have an id in the parent div
-            const externalId = el.getAttribute('internshipid') || null;
+            const externalId = el.getAttribute('internshipid') || el.getAttribute('jobid') || null;
 
-            if (title && applyUrl && externalId) {
+            if (title && externalId) {
                 scrapedData.push({
                     externalId: `internshala_${externalId}`,
                     platform: 'Internshala',
@@ -56,8 +64,8 @@ export const ScraperService = {
                     location,
                     salary,
                     jobType: 'Full-time', // Usually Jobs on Internshala are full time, or we'd check tags
-                    description: `Scraped from Internshala. Search keyword: ${keyword}. Please visit the link for full details.`,
-                    applyUrl,
+                    description: `Scraped from Internshala. Search keyword: ${keyword}.`,
+                    applyUrl: applyUrl || 'https://internshala.com',
                     requiredSkills: [keyword], // default tagging
                     isEasyApply: false
                 });

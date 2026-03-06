@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
@@ -78,6 +79,33 @@ const dummyJobs: JobProps[] = [
 export default function Jobs() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFiltersMobile, setShowFiltersMobile] = useState(false);
+  
+  const [jobs, setJobs] = useState<JobProps[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        setIsLoading(true);
+        // Assuming your backend runs on port 5000 and has a /api/jobs endpoint
+        const response = await axios.get('http://localhost:5000/api/jobs');
+        
+        // Use the fetched jobs, fallback to dummyJobs if empty for UX purposes while testing
+        if (response.data && response.data.length > 0) {
+           setJobs(response.data);
+        } else {
+           setJobs(dummyJobs);
+        }
+      } catch (error) {
+        console.error("Failed to fetch jobs:", error);
+        setJobs(dummyJobs); // fallback on error
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchJobs();
+  }, []);
 
   return (
     <div className="flex flex-col md:flex-row gap-6">
@@ -131,16 +159,22 @@ export default function Jobs() {
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold dark:text-white">Recommended Jobs</h2>
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            Showing <span className="font-semibold text-gray-900 dark:text-gray-100">{dummyJobs.length}</span> results
+            Showing <span className="font-semibold text-gray-900 dark:text-gray-100">{jobs.length}</span> results
           </div>
         </div>
 
         {/* Job Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-          {dummyJobs.map((job) => (
-            <JobCard key={job.id} job={job} />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="flex justify-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+            {jobs.map((job) => (
+              <JobCard key={job.id} job={job} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

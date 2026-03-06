@@ -10,10 +10,11 @@ export interface JobProps {
   company: string;
   location: string;
   salary?: string;
-  type: string;
+  jobType?: string;
   platform: string;
-  matchScore: number;
-  postedAt: string;
+  matchScore?: number;
+  postedAt?: string;
+  scrapedAt?: string;
   companyLogo?: string;
 }
 
@@ -65,11 +66,11 @@ export default function JobCard({ job }: { job: JobProps }) {
           </div>
           <div className="flex items-center space-x-1.5">
             <Briefcase className="w-4 h-4 text-gray-400" />
-            <span className="line-clamp-1">{job.type}</span>
+            <span className="line-clamp-1">{job.jobType || 'Full-time'}</span>
           </div>
           <div className="flex items-center space-x-1.5">
             <Clock className="w-4 h-4 text-gray-400" />
-            <span className="line-clamp-1">{job.postedAt}</span>
+            <span className="line-clamp-1">{job.postedAt || new Date(job.scrapedAt || Date.now()).toLocaleDateString()}</span>
           </div>
         </div>
 
@@ -77,19 +78,19 @@ export default function JobCard({ job }: { job: JobProps }) {
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">AI Match Score</span>
             <span className={`text-sm font-bold ${
-              job.matchScore >= 80 ? 'text-green-500' : 
-              job.matchScore >= 60 ? 'text-orange-500' : 'text-red-500'
+              (job.matchScore || 0) >= 80 ? 'text-green-500' : 
+              (job.matchScore || 0) >= 60 ? 'text-orange-500' : 'text-gray-400'
             }`}>
-              {job.matchScore}%
+              {job.matchScore ? `${job.matchScore}%` : 'Pending'}
             </span>
           </div>
           <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-1.5">
             <div 
               className={`h-1.5 rounded-full ${
-                job.matchScore >= 80 ? 'bg-green-500' : 
-                job.matchScore >= 60 ? 'bg-orange-500' : 'bg-red-500'
+                (job.matchScore || 0) >= 80 ? 'bg-green-500' : 
+                (job.matchScore || 0) >= 60 ? 'bg-orange-500' : 'bg-gray-400'
               }`}
-              style={{ width: `${job.matchScore}%` }}
+              style={{ width: `${job.matchScore || 0}%` }}
             />
           </div>
         </div>

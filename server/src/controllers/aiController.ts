@@ -1,12 +1,18 @@
 import { Request, Response } from 'express';
 import { AI } from '../services/ai.service';
 import fs from 'fs';
+const pdfParse = require('pdf-parse');
 
-// Helper to convert PDF to text (mocked for simplicity here, real app needs pdf-parse)
+// Helper to convert PDF to text
 const extractTextFromPDF = async (filePath: string): Promise<string> => {
-   // In a complete implementation, use 'pdf-parse' or similar to read the buffer
-   // For now, returning a dummy string to pass to Claude
-   return `CANDIDATE RESUME TEXT EXTRACTED FROM ${filePath}\n\nExperience: 5 years Software Engineering...`;
+   try {
+     const dataBuffer = fs.readFileSync(filePath);
+     const data = await pdfParse(dataBuffer);
+     return data.text;
+   } catch (error) {
+     console.error("PDF Parsing Error:", error);
+     throw new Error("Could not extract text from PDF");
+   }
 };
 
 export const parseResume = async (req: Request, res: Response) => {

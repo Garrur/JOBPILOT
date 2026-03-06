@@ -1,41 +1,72 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import axios from 'axios';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { MapPin, Briefcase, IndianRupee, Clock, Building2, CheckCircle2, ChevronLeft, Sparkles } from 'lucide-react';
 import ApplyModal from '../components/apply/ApplyModal';
 
-// Dummy data
-const jobData = {
-  id: '1',
-  title: 'Senior React Developer',
-  company: 'TechCorp Solutions',
-  location: 'Remote',
-  salary: '₹18L - ₹25L',
-  type: 'Full-time',
-  platform: 'LinkedIn',
-  matchScore: 92,
-  postedAt: '2h ago',
-  about: 'TechCorp Solutions is a leading provider of enterprise SaaS products. We are looking for a highly skilled Senior React Developer to join our core engineering team and help build the next generation of our analytics platform.',
-  description: 'As a Senior React Developer, you will be responsible for defining the architecture of our frontend applications, mentoring junior developers, and writing clean, maintainable, and highly performant code. You will work closely with product managers and designers to deliver exceptional user experiences.',
-  requirements: [
-    { text: '5+ years of experience with React.js and modern JavaScript (ES6+)', hasSkill: true },
-    { text: 'Deep understanding of React state management (Redux, Zustand, Context)', hasSkill: true },
-    { text: 'Experience with TypeScript in large scale applications', hasSkill: true },
-    { text: 'Knowledge of testing frameworks (Jest, React Testing Library)', hasSkill: false },
-    { text: 'Familiarity with CI/CD pipelines and Webpack/Vite configuration', hasSkill: false },
-  ]
-};
+// Interface defining what the backend returns for a job
+interface JobDetailData {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  salary?: string;
+  jobType?: string;
+  platform: string;
+  scrapedAt: string;
+  description: string;
+}
 
 export default function JobDetail() {
-  // Real app: use `id` to fetch the specific job
   const { id } = useParams();
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const [jobData, setJobData] = useState<JobDetailData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Dummy effect to satisfy compiler for unused variable temporarily
+  // Dummy AI Match data for now since backend parser isn't connected to specific users yet
+  const aiMatchData = {
+    matchScore: 85,
+    requirements: [
+       { text: 'Required skills found in resume', hasSkill: true },
+       { text: 'Relevant professional experience', hasSkill: true },
+       { text: 'Location/Remote preference match', hasSkill: false },
+    ]
+  };
+
   useEffect(() => {
-    if (id) console.log(`Job Detail View: ${id}`);
+    const fetchJob = async () => {
+      try {
+        setIsLoading(true);
+        const response = await axios.get(`http://localhost:5000/api/jobs/${id}`);
+        setJobData(response.data);
+      } catch (error) {
+        console.error("Failed to fetch job details:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (id) fetchJob();
   }, [id]);
+
+  if (isLoading) {
+    return (
+       <div className="flex justify-center items-center h-64">
+         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+       </div>
+    );
+  }
+
+  if (!jobData) {
+    return (
+       <div className="max-w-4xl mx-auto text-center py-20">
+         <h2 className="text-2xl font-bold dark:text-white mb-4">Job Not Found</h2>
+         <Link to="/jobs"><Button>Back to Jobs</Button></Link>
+       </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20">
@@ -62,9 +93,9 @@ export default function JobDetail() {
               </div>
               <div className="flex flex-wrap gap-y-2 gap-x-4 text-sm text-gray-600 dark:text-gray-300">
                 <div className="flex items-center"><MapPin className="w-4 h-4 mr-1 text-gray-400"/> {jobData.location}</div>
-                <div className="flex items-center"><IndianRupee className="w-4 h-4 mr-1 text-gray-400"/> {jobData.salary}</div>
-                <div className="flex items-center"><Briefcase className="w-4 h-4 mr-1 text-gray-400"/> {jobData.type}</div>
-                <div className="flex items-center"><Clock className="w-4 h-4 mr-1 text-gray-400"/> {jobData.postedAt}</div>
+                <div className="flex items-center"><IndianRupee className="w-4 h-4 mr-1 text-gray-400"/> {jobData.salary || 'Not Specified'}</div>
+                <div className="flex items-center"><Briefcase className="w-4 h-4 mr-1 text-gray-400"/> {jobData.jobType || 'Full-time'}</div>
+                <div className="flex items-center"><Clock className="w-4 h-4 mr-1 text-gray-400"/> {new Date(jobData.scrapedAt).toLocaleDateString()}</div>
               </div>
             </div>
           </div>
@@ -87,21 +118,14 @@ export default function JobDetail() {
         {/* Main Content */}
         <div className="md:col-span-2 space-y-6">
           <div className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl p-6 shadow-sm">
-            <h2 className="text-lg font-bold mb-4 dark:text-white">About the Company</h2>
-            <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm">
-              {jobData.about}
-            </p>
-          </div>
-
-          <div className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl p-6 shadow-sm">
             <h2 className="text-lg font-bold mb-4 dark:text-white">Job Description</h2>
-            <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm mb-6">
+            <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm mb-6 whitespace-pre-wrap">
               {jobData.description}
             </p>
             
-            <h3 className="font-semibold mb-3 dark:text-white">Requirements & Skills</h3>
+            <h3 className="font-semibold mb-3 dark:text-white">AI Predicted Requirements</h3>
             <ul className="space-y-3">
-              {jobData.requirements.map((req, idx) => (
+              {aiMatchData.requirements.map((req, idx) => (
                 <li key={idx} className="flex items-start text-sm">
                   <CheckCircle2 className={`w-5 h-5 mr-3 flex-shrink-0 mt-0.5 ${req.hasSkill ? 'text-green-500' : 'text-gray-300 dark:text-gray-600'}`} />
                   <span className={req.hasSkill ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500'}>{req.text}</span>
@@ -124,10 +148,10 @@ export default function JobDetail() {
               <div className="relative w-32 h-32 flex items-center justify-center rounded-full border-8 border-orange-100 dark:border-slate-700">
                 <svg className="absolute inset-0 w-full h-full transform -rotate-90">
                   <circle cx="64" cy="64" r="56" stroke="currentColor" strokeWidth="8" fill="transparent"
-                    className="text-orange-500" strokeDasharray={`${jobData.matchScore * 3.51} 351`} />
+                    className="text-orange-500" strokeDasharray={`${aiMatchData.matchScore * 3.51} 351`} />
                 </svg>
                 <div className="text-center">
-                  <span className="text-3xl font-bold dark:text-white">{jobData.matchScore}%</span>
+                  <span className="text-3xl font-bold dark:text-white">{aiMatchData.matchScore}%</span>
                   <span className="block text-xs text-gray-500 font-medium">Match Score</span>
                 </div>
               </div>
@@ -163,6 +187,7 @@ export default function JobDetail() {
       <ApplyModal 
         isOpen={isApplyModalOpen} 
         onClose={() => setIsApplyModalOpen(false)} 
+        jobId={jobData.id}
         jobTitle={jobData.title}
         companyName={jobData.company}
       />

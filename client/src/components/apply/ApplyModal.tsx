@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import axios from 'axios';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -17,11 +18,12 @@ import { useAuthStore } from '../../store/authStore';
 interface ApplyModalProps {
   isOpen: boolean;
   onClose: () => void;
+  jobId: string;
   jobTitle: string;
   companyName: string;
 }
 
-export default function ApplyModal({ isOpen, onClose, jobTitle, companyName }: ApplyModalProps) {
+export default function ApplyModal({ isOpen, onClose, jobId, jobTitle, companyName }: ApplyModalProps) {
   const { user } = useAuthStore();
   const [isApplying, setIsApplying] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -33,9 +35,17 @@ export default function ApplyModal({ isOpen, onClose, jobTitle, companyName }: A
     e.preventDefault();
     setIsApplying(true);
     
-    // Simulate API call and platform submission
-    setTimeout(() => {
-      setIsApplying(false);
+    try {
+      const token = useAuthStore.getState().token;
+      
+      // Hit backend API to actually create the Application record
+      await axios.post('http://localhost:5000/api/applications', {
+        jobId,
+        coverLetter: defaultCoverLetter
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
       setIsSuccess(true);
       
       // Auto close after success
@@ -43,7 +53,12 @@ export default function ApplyModal({ isOpen, onClose, jobTitle, companyName }: A
         setIsSuccess(false);
         onClose();
       }, 2000);
-    }, 1500);
+    } catch (error: any) {
+      console.error("Failed to apply:", error);
+      alert(error.response?.data?.error || "Failed to submit application");
+    } finally {
+      setIsApplying(false);
+    }
   };
 
   if (isSuccess) {
