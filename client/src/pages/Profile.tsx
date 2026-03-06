@@ -6,7 +6,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Separator } from '../components/ui/separator';
-import { MapPin, Mail, Phone, ExternalLink, Download, Sparkles, FileText, Upload } from 'lucide-react';
+import { MapPin, Mail, Phone, ExternalLink, Download, Sparkles, FileText, Upload, X } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 
@@ -22,6 +22,62 @@ export default function Profile() {
   const [extractedSkills, setExtractedSkills] = useState<string[]>(user?.skills || []);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Profile Edit State
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editBio, setEditBio] = useState(user?.bio || '');
+  const [editLinkedin, setEditLinkedin] = useState(user?.linkedinUrl || '');
+  const [editGithub, setEditGithub] = useState(user?.githubUrl || '');
+  const [editPortfolio, setEditPortfolio] = useState(user?.portfolioUrl || '');
+  const [editSkills, setEditSkills] = useState<string[]>(user?.skills || []);
+  const [newSkill, setNewSkill] = useState('');
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
+  const handleSaveProfile = async () => {
+    setIsUpdatingProfile(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/auth/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          bio: editBio,
+          linkedinUrl: editLinkedin,
+          githubUrl: editGithub,
+          portfolioUrl: editPortfolio,
+          skills: editSkills
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to update profile');
+      const data = await response.json();
+      useAuthStore.getState().updateUser(data.user);
+      setIsEditingProfile(false);
+      toast.success('Profile updated successfully');
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
+
+  const removeSkill = (skillToRemove: string) => {
+    setEditSkills(editSkills.filter(s => s !== skillToRemove));
+  };
+
+  const addSkill = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && newSkill.trim()) {
+      e.preventDefault();
+      if (!editSkills.includes(newSkill.trim())) {
+        setEditSkills([...editSkills, newSkill.trim()]);
+      }
+      setNewSkill('');
+    }
+  };
+
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -95,15 +151,15 @@ export default function Profile() {
               <h1 className="text-2xl font-bold dark:text-white">{user?.name || 'John Doe'}</h1>
               <p className="text-lg text-gray-500 dark:text-gray-400 font-medium">Full Stack Developer</p>
             </div>
-            <Button variant="outline" className="dark:border-slate-600 hidden md:flex">
-              Edit Profile
+            <Button variant="outline" className="dark:border-slate-600 hidden md:flex" onClick={() => setIsEditingProfile(!isEditingProfile)}>
+              {isEditingProfile ? 'Cancel Edit' : 'Edit Profile'}
             </Button>
           </div>
           
           <div className="flex flex-wrap gap-y-2 gap-x-6 text-sm text-gray-600 dark:text-gray-300 mt-4">
-            <div className="flex items-center"><MapPin className="w-4 h-4 mr-2" /> Bangalore, India</div>
+            <div className="flex items-center"><MapPin className="w-4 h-4 mr-2" /> {user?.location || 'Bangalore, India'}</div>
             <div className="flex items-center"><Mail className="w-4 h-4 mr-2" /> {user?.email || 'user@example.com'}</div>
-            <div className="flex items-center"><Phone className="w-4 h-4 mr-2" /> +91 98765 43210</div>
+            <div className="flex items-center"><Phone className="w-4 h-4 mr-2" /> {user?.phone || '+91 98765 43210'}</div>
           </div>
         </div>
       </div>
@@ -145,44 +201,94 @@ export default function Profile() {
 
             {/* About / Bio */}
             <div className="space-y-6 md:col-span-2">
-              <Card className="dark:bg-slate-800 border-none shadow-sm">
-                <CardHeader>
+              <Card className="dark:bg-slate-800 border-none shadow-sm h-full">
+                <CardHeader className="flex flex-row justify-between items-center">
                   <CardTitle className="text-lg">Professional Summary</CardTitle>
+                  {isEditingProfile && (
+                    <Button size="sm" onClick={handleSaveProfile} disabled={isUpdatingProfile}>
+                      {isUpdatingProfile ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm">
-                    Passionate Full Stack Developer with 4 years of experience building scalable web applications. 
-                    Strong expertise in React, Node.js, and modern TypeScript ecosystems. Proven track record of 
-                    optimizing performance and delivering high-quality user interfaces. Currently focusing on incorporating 
-                    AI into traditional SaaS products.
-                  </p>
+                  {isEditingProfile ? (
+                    <textarea 
+                      value={editBio}
+                      onChange={(e) => setEditBio(e.target.value)}
+                      placeholder="Write a short professional summary..."
+                      className="w-full h-32 p-3 text-sm rounded-md border dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    />
+                  ) : (
+                    <p className="text-gray-600 dark:text-gray-300 leading-relaxed text-sm">
+                      {user?.bio || 'Passionate professional with a proven track record. Add your bio here by clicking Edit Profile.'}
+                    </p>
+                  )}
                   
                   <Separator className="my-6 dark:bg-slate-700" />
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <h4 className="font-medium text-sm text-gray-500 mb-3">Links</h4>
-                      <div className="space-y-2">
-                        <a href="#" className="flex items-center text-sm text-blue-600 dark:text-blue-400 hover:underline">
-                          <ExternalLink className="w-4 h-4 mr-2" /> LinkedIn Profile
-                        </a>
-                        <a href="#" className="flex items-center text-sm text-gray-700 dark:text-gray-300 hover:underline">
-                          <ExternalLink className="w-4 h-4 mr-2" /> GitHub (johndoe)
-                        </a>
-                        <a href="#" className="flex items-center text-sm text-orange-600 dark:text-orange-400 hover:underline">
-                          <ExternalLink className="w-4 h-4 mr-2" /> Personal Portfolio
-                        </a>
-                      </div>
+                      {isEditingProfile ? (
+                        <div className="space-y-3">
+                          <Input value={editLinkedin} onChange={e => setEditLinkedin(e.target.value)} placeholder="LinkedIn URL" className="h-8 text-xs" />
+                          <Input value={editGithub} onChange={e => setEditGithub(e.target.value)} placeholder="GitHub URL" className="h-8 text-xs" />
+                          <Input value={editPortfolio} onChange={e => setEditPortfolio(e.target.value)} placeholder="Portfolio URL" className="h-8 text-xs" />
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {(user?.linkedinUrl || editLinkedin) && (
+                            <a href={user?.linkedinUrl || editLinkedin} target="_blank" className="flex items-center text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                              <ExternalLink className="w-4 h-4 mr-2" /> LinkedIn Profile
+                            </a>
+                          )}
+                          {(user?.githubUrl || editGithub) && (
+                            <a href={user?.githubUrl || editGithub} target="_blank" className="flex items-center text-sm text-gray-700 dark:text-gray-300 hover:underline">
+                              <ExternalLink className="w-4 h-4 mr-2" /> GitHub
+                            </a>
+                          )}
+                          {(user?.portfolioUrl || editPortfolio) && (
+                            <a href={user?.portfolioUrl || editPortfolio} target="_blank" className="flex items-center text-sm text-orange-600 dark:text-orange-400 hover:underline">
+                              <ExternalLink className="w-4 h-4 mr-2" /> Personal Portfolio
+                            </a>
+                          )}
+                          {!user?.linkedinUrl && !user?.githubUrl && !user?.portfolioUrl && (
+                            <span className="text-sm text-gray-400">No links added</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <h4 className="font-medium text-sm text-gray-500 mb-3">Top Skills</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {['React', 'TypeScript', 'Node.js', 'PostgreSQL', 'Tailwind CSS', 'AWS'].map(skill => (
-                          <span key={skill} className="px-2.5 py-1 bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-gray-300 rounded-md text-xs font-medium">
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
+                      {isEditingProfile ? (
+                        <div className="space-y-3">
+                          <div className="flex flex-wrap gap-2">
+                            {editSkills.map(skill => (
+                              <span key={skill} className="px-2.5 py-1 bg-gray-100 dark:bg-slate-700 rounded-md text-xs font-medium flex items-center group">
+                                {skill}
+                                <button onClick={() => removeSkill(skill)} className="ml-1 opacity-50 hover:opacity-100 hover:text-red-500"><X className="w-3 h-3" /></button>
+                              </span>
+                            ))}
+                          </div>
+                          <Input 
+                            value={newSkill} 
+                            onChange={e => setNewSkill(e.target.value)} 
+                            onKeyDown={addSkill}
+                            placeholder="Type a skill and press Enter" 
+                            className="h-8 text-xs" 
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {user?.skills?.length ? user.skills.map(skill => (
+                            <span key={skill} className="px-2.5 py-1 bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-gray-300 rounded-md text-xs font-medium">
+                              {skill}
+                            </span>
+                          )) : (
+                            <span className="text-sm text-gray-400">No skills added</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>

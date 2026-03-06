@@ -4,9 +4,15 @@ interface User {
   id: string;
   email: string;
   name: string;
+  phone?: string;
+  location?: string;
   skills: string[];
   resumeUrl?: string;
   resumeText?: string;
+  bio?: string;
+  linkedinUrl?: string;
+  githubUrl?: string;
+  portfolioUrl?: string;
 }
 
 interface AuthState {

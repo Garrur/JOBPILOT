@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import { prisma } from '../index';
 import { AI } from '../services/ai.service';
+import { AuthRequest } from '../middleware/auth';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretplaceholderkey2026';
 
@@ -126,5 +127,45 @@ export const uploadResume = async (req: any, res: Response) => {
   } finally {
     // Clean up temp file
     try { if (file?.path) fs.unlinkSync(file.path); } catch {}
+  }
+};
+
+export const updateProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.userId) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+
+    const { name, bio, linkedinUrl, githubUrl, portfolioUrl, skills } = req.body;
+
+    const data: any = {};
+    if (name !== undefined) data.name = name;
+    if (bio !== undefined) data.bio = bio;
+    if (linkedinUrl !== undefined) data.linkedinUrl = linkedinUrl;
+    if (githubUrl !== undefined) data.githubUrl = githubUrl;
+    if (portfolioUrl !== undefined) data.portfolioUrl = portfolioUrl;
+    if (skills !== undefined) data.skills = Array.isArray(skills) ? skills : [];
+
+    const updatedUser = await prisma.user.update({
+      where: { id: req.userId },
+      data,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        bio: true,
+        skills: true,
+        linkedinUrl: true,
+        githubUrl: true,
+        portfolioUrl: true,
+        resumeUrl: true,
+      }
+    });
+
+    res.json({ message: 'Profile updated successfully', user: updatedUser });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
   }
 };

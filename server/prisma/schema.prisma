@@ -18,9 +18,11 @@ model User {
   phone        String?
   location     String?
   linkedinUrl  String?
+  githubUrl    String?
   portfolioUrl String?
   resumeUrl    String?
   resumeText   String?
+  bio          String?
   skills       String[]
   experience   Json?
   education    Json?
