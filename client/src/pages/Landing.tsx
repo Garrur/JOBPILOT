@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import {
   Briefcase, Zap, BarChart3, Target, Star, ChevronRight,
@@ -69,6 +69,10 @@ export default function Landing() {
   const [dark, setDark] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [count, setCount] = useState(0);
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   // Animate the jobs count
   useEffect(() => {
